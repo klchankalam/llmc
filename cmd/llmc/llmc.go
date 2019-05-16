@@ -5,18 +5,20 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/julienschmidt/httprouter"
 	"log"
 	"net/http"
 	"strings"
 )
 
 func main() {
-	http.HandleFunc("/orders", newOrderHandler)
-	http.HandleFunc("/", dummyHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	router := httprouter.New()
+	router.POST("/orders", newOrderHandler)
+	router.GET("/", dummyHandler)
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
 
-func dummyHandler(writer http.ResponseWriter, request *http.Request) {
+func dummyHandler(writer http.ResponseWriter, request *http.Request, _ httprouter.Params) {
 	fmt.Fprintf(writer, "Welcome to my website!")
 }
 
@@ -31,10 +33,7 @@ type OrderResponse struct {
 	status   string `gorm:"size:10"`
 }
 
-func newOrderHandler(w http.ResponseWriter, r *http.Request) {
-	if !checkMethod(r, w, http.MethodPost) {
-		return
-	}
+func newOrderHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	if !checkContentType(r, w, "application/json") {
 		return
 	}
@@ -43,7 +42,7 @@ func newOrderHandler(w http.ResponseWriter, r *http.Request) {
 	var order OrderRequest
 	jsonErr := json.NewDecoder(r.Body).Decode(&order)
 	if jsonErr != nil || len(order.origin) != 2 || len(order.destination) != 2 {
-		writeHTTPErrorHeader(w, http.StatusBadRequest, fmt.Sprintf("Cannot parse JSON body: %s", jsonErr.Error()))
+		http.Error(w, fmt.Sprintf("Cannot parse JSON body: %s", jsonErr), http.StatusBadRequest)
 		return
 	}
 
@@ -60,7 +59,7 @@ func newOrderHandler(w http.ResponseWriter, r *http.Request) {
 
 func checkMethod(r *http.Request, w http.ResponseWriter, method string) bool {
 	if strings.ToUpper(r.Method) != method {
-		writeHTTPErrorHeader(w, http.StatusMethodNotAllowed, http.StatusText(http.StatusMethodNotAllowed))
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return false
 	}
 	return true
@@ -69,13 +68,8 @@ func checkMethod(r *http.Request, w http.ResponseWriter, method string) bool {
 func checkContentType(r *http.Request, w http.ResponseWriter, ct string) bool {
 	contentType := r.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, ct) {
-		writeHTTPErrorHeader(w, http.StatusUnsupportedMediaType, http.StatusText(http.StatusUnsupportedMediaType))
+		http.Error(w, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
 		return false
 	}
 	return true
-}
-
-func writeHTTPErrorHeader(w http.ResponseWriter, e int, s string) {
-	w.WriteHeader(e)
-	w.Write([]byte(s))
 }
