@@ -25,7 +25,7 @@ services:
     #      - "2345:2345"
     depends_on:
       - db
-    command: ["bash", "-c", "./wait-for-it.sh -t 1 db:5432 -- go run src/app/llmc.go"]
+    command: ["bash", "-c", "/go/wait-for-it.sh -t 1 db:5432 -- go run app"]
     #    security_opt:
     #      - "seccomp:unconfined"
     #command: /go/bin/dlv debug ./src/app --headless --log --listen=:2345 --api-version=2

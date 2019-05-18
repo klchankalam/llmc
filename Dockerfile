@@ -1,6 +1,6 @@
 FROM golang:1.12.5
+COPY . /go
 WORKDIR /go/src/app
-COPY . .
 RUN go get -d -v ./...
 RUN go install -v ./...
 #&& RUN go get github.com/derekparker/delve/src/dlv
