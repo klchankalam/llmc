@@ -29,8 +29,6 @@ func main() {
 	router.GET("/orders", listOrderHandler)
 
 	// setup db
-	// TODO use wait?
-	time.Sleep(2 * time.Second)
 	log.Println("initializing DB...")
 	initDb()
 	defer DB.Close()
@@ -38,8 +36,8 @@ func main() {
 	log.Println("DB initialized")
 
 	// start server
+	log.Println("Starting server")
 	log.Fatal(http.ListenAndServe(":8080", router))
-	log.Println("Server started")
 }
 
 func initDb() {
@@ -72,20 +70,11 @@ type Order struct {
 	UpdatedAt   time.Time `json:"-"`
 }
 
-type ErrorMessage struct {
-	Error string `json:"error"`
-}
-
 func listOrderHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// get query params
-	limit, errLimit := strconv.Atoi(getParamOrDefault(r, "limit", "-1"))
-	if errLimit != nil || limit < -1 {
-		writeJSONErrorResponse(w, fmt.Sprintf("Invalid limit %v", errLimit), http.StatusBadRequest)
-		return
-	}
-	page, errPage := strconv.Atoi(getParamOrDefault(r, "page", "1"))
-	if errPage != nil || page < 1 {
-		writeJSONErrorResponse(w, fmt.Sprintf("Invalid page %v", errPage), http.StatusBadRequest)
+	page, limit, err := getPageAndLimit(r, w)
+	if len(err) > 0 {
+		writeJSONErrorResponse(w, strings.Join(err, "; "), http.StatusBadRequest)
 		return
 	}
 
@@ -97,10 +86,39 @@ func listOrderHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	writeJSONToResponse(&orders, w)
 }
 
-func getParamOrDefault(r *http.Request, param string, def string) string {
+func getPageAndLimit(req *http.Request, w http.ResponseWriter) (int, int, []string) {
+	limitMin, pageMin, pageDefault := 1, 1, 1
+	limitDefault := -1
+	var es []string
+
+	limit, err := getNumberFromRequestWithLowerBound(req, w, "limit", limitDefault, limitMin)
+	if err != "" {
+		es = append(es, err)
+	}
+	page, err := getNumberFromRequestWithLowerBound(req, w, "page", pageDefault, pageMin)
+	if err != "" {
+		es = append(es, err)
+	}
+
+	return page, limit, es
+}
+
+// return param in number, in case of err, default value and err are returned
+func getNumberFromRequestWithLowerBound(req *http.Request, w http.ResponseWriter, param string, def int, min int) (int, string) {
+	num, err := strconv.Atoi(getParamOrDefault(req, param, def))
+	if err != nil {
+		return def, fmt.Sprintf("Invalid %s %v", param, err)
+	}
+	if num != def && num < min {
+		return def, fmt.Sprintf("Invalid %s %d", param, num)
+	}
+	return num, ""
+}
+
+func getParamOrDefault(r *http.Request, param string, def int) string {
 	p := r.URL.Query().Get(param)
 	if p == "" {
-		return def
+		p = strconv.Itoa(def)
 	}
 	return p
 }
@@ -209,15 +227,12 @@ func checkContentType(r *http.Request, w http.ResponseWriter, ct string) bool {
 	return true
 }
 
-func getErrorJsonString(errMsg string) string {
-	s, err := json.Marshal(&ErrorMessage{errMsg})
-	if err != nil {
-		panic(fmt.Sprintf("Cannot marshal json: %s", errMsg))
-	}
-	return string(s)
+type ErrorMessage struct {
+	Error string `json:"error"`
 }
 
 func writeJSONToResponse(v interface{}, w http.ResponseWriter) {
+	setResponseHeaderToJson(w, http.StatusOK)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
 		writeJSONErrorResponse(w, fmt.Sprintf("Cannot marshal JSON body: %v", err), http.StatusInternalServerError)
 		return
@@ -225,8 +240,20 @@ func writeJSONToResponse(v interface{}, w http.ResponseWriter) {
 }
 
 func writeJSONErrorResponse(w http.ResponseWriter, error string, code int) {
+	setResponseHeaderToJson(w, code)
+	_, _ = fmt.Fprintln(w, getErrorJsonString(error))
+}
+
+func setResponseHeaderToJson(w http.ResponseWriter, code int) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(code)
-	_, _ = fmt.Fprintln(w, getErrorJsonString(error))
+}
+
+func getErrorJsonString(errMsg string) string {
+	s, err := json.Marshal(&ErrorMessage{errMsg})
+	if err != nil {
+		panic(fmt.Sprintf("Cannot marshal json: %s", errMsg))
+	}
+	return string(s)
 }

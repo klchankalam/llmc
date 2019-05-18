@@ -1,17 +1,5 @@
 version: '3.7'
 services:
-  web:
-    build: .
-    ports:
-      - "8080:8080"
-#      - "2345:2345"
-    depends_on:
-      - db
-#    security_opt:
-#      - "seccomp:unconfined"
-    #command: /go/bin/dlv debug ./cmd/llmc --headless --log --listen=:2345 --api-version=2
-    #entrypoint: dlv debug llmc -l 0.0.0.0:2345 --headless=true --log=true -- server
-    #network_mode: "host"
 #  db:
 #    image: mysql
 #    command: --default-authentication-plugin=mysql_native_password
@@ -30,3 +18,16 @@ services:
     restart: always
     environment:
       POSTGRES_PASSWORD: password
+  web:
+    build: .
+    ports:
+      - "8080:8080"
+    #      - "2345:2345"
+    depends_on:
+      - db
+    command: ["bash", "-c", "./wait-for-it.sh -t 1 db:5432 -- go run src/app/llmc.go"]
+    #    security_opt:
+    #      - "seccomp:unconfined"
+    #command: /go/bin/dlv debug ./src/app --headless --log --listen=:2345 --api-version=2
+    #entrypoint: dlv debug app -l 0.0.0.0:2345 --headless=true --log=true -- server
+    #network_mode: "host"
