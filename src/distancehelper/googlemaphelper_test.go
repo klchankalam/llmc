@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"googlemaps.github.io/maps"
 	"os"
-	"requesthandler"
+	"request"
 	"testing"
 	"time"
 )
@@ -30,11 +30,11 @@ func (m *GMapMock) GetClient(apiKey string) (GMapClientWrapper, error) {
 	return args.Get(0).(GMapClientWrapper), args.Error(1)
 }
 
-var req = &requesthandler.PlaceOrderRequest{Origin: []string{"22.2802", "114.184919"}, Destination: []string{"25.052192", "121.522333"}}
+var req = &request.PlaceOrderRequest{Origin: []string{"22.2802", "114.184919"}, Destination: []string{"25.052192", "121.522333"}}
 
 func TestDistanceWithNoKeyAndEmptyRequest(t *testing.T) {
 	os.Remove(apiKeyName)
-	d, err := GetDistanceMeters(&requesthandler.PlaceOrderRequest{}, &GMap{&GMapMock{}})
+	d, err := GetDistanceMeters(&request.PlaceOrderRequest{}, &GMap{&GMapMock{}})
 	if d != 0 || err != nil {
 		t.Errorf("Incorrect distance: got %d, expected 0; err: %v", d, err)
 	}
