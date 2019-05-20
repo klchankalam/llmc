@@ -6,7 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"googlemaps.github.io/maps"
 	"os"
-	"requesthandler"
+	"request"
 	"strings"
 )
 
@@ -15,22 +15,34 @@ const (
 	apiKeyName = "GOOGLE_MAP_API_KEY"
 )
 
-type GMapInputer interface {
-	WithAPIKey(apiKey string) maps.ClientOption
-	NewClient(options ...maps.ClientOption) (*maps.Client, error)
+type GMapWrapper interface {
+	GetClient(apiKey string) (GMapClientWrapper, error)
 }
 
-type GMapInput struct {
-	WithAPIKeyFunc func(apiKey string) maps.ClientOption
-	NewClientFunc  func(options ...maps.ClientOption) (*GMapClientInput, error)
+type GMap struct {
+	GMapWrapper
 }
 
-type GMapClientInputer interface {
+type GMapReal struct {
+}
+
+func (m *GMapReal) GetClient(apiKey string) (GMapClientWrapper, error) {
+	return maps.NewClient(maps.WithAPIKey(apiKey))
+}
+
+type GMapClientWrapper interface {
 	DistanceMatrix(ctx context.Context, r *maps.DistanceMatrixRequest) (*maps.DistanceMatrixResponse, error)
 }
 
-type GMapClientInput struct {
-	DistanceMatrixFunc func(ctx context.Context, r *maps.DistanceMatrixRequest) (*maps.DistanceMatrixResponse, error)
+type GMapClient struct {
+	GMapClientWrapper
+}
+
+type GMapClientReal struct {
+}
+
+func (m *GMapClientReal) DistanceMatrix(ctx context.Context, r *maps.DistanceMatrixRequest) (*maps.DistanceMatrixResponse, error) {
+	return m.DistanceMatrix(ctx, r)
 }
 
 func init() {
@@ -39,14 +51,14 @@ func init() {
 	}
 }
 
-func GetDistanceMeters(co *requesthandler.PlaceOrderRequest, mi *GMapInput) (int, error) {
+func GetDistanceMeters(co *request.PlaceOrderRequest, gm *GMap) (int, error) {
 	key, present := os.LookupEnv(apiKeyName)
 	if !present {
 		return 0, nil
 	}
 
 	// create client
-	c, err := mi.NewClientFunc(mi.WithAPIKeyFunc(key))
+	c, err := gm.GetClient(key)
 	if err != nil {
 		panic(fmt.Sprintf("fatal error: %s", err))
 	}
@@ -54,7 +66,7 @@ func GetDistanceMeters(co *requesthandler.PlaceOrderRequest, mi *GMapInput) (int
 	// get distance
 	r := &maps.DistanceMatrixRequest{Origins: []string{strings.Join(co.Origin, ",")},
 		Destinations: []string{strings.Join(co.Destination, ",")}}
-	dist, err := c.DistanceMatrixFunc(context.Background(), r)
+	dist, err := c.DistanceMatrix(context.Background(), r)
 	if err != nil {
 		log.Errorf("Google map API problem: %v", err)
 		return -1, err

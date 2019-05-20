@@ -2,11 +2,13 @@ package requesthandler
 
 import (
 	"db"
+	"distancehelper"
 	"encoding/json"
 	. "entity"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
+	"request"
 	"responseutil"
 	"strconv"
 	"strings"
@@ -16,11 +18,6 @@ const (
 	StatusUnassigned = "UNASSIGNED"
 	StatusTaken      = "TAKEN"
 )
-
-type PlaceOrderRequest struct {
-	Origin      []string
-	Destination []string
-}
 
 type TakeOrder struct {
 	Status string `json:"Status"`
@@ -92,7 +89,7 @@ func HandleNewOrder(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 	}
 
 	// get body and check JSON
-	var orderRequest PlaceOrderRequest
+	var orderRequest request.PlaceOrderRequest
 	err := json.NewDecoder(r.Body).Decode(&orderRequest)
 	if err != nil || len(orderRequest.Origin) != 2 || len(orderRequest.Destination) != 2 {
 		responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Cannot parse JSON body: %v", err), http.StatusBadRequest)
@@ -104,8 +101,16 @@ func HandleNewOrder(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 		return
 	}
 
-	// TODO Get distance
-	var dist uint64 = 10
+	// Get distance
+	dist, err := distancehelper.GetDistanceMeters(&orderRequest, &distancehelper.GMap{&distancehelper.GMapReal{}})
+	if err != nil {
+		responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Canno find distance: %v", err), http.StatusInternalServerError)
+		return
+	}
+	if dist == -1 {
+		responseutil.WriteJSONErrorResponse(w, "Canno find distance, please check your input.", http.StatusBadRequest)
+		return
+	}
 
 	// save orderRequest in db
 	res := &Order{Distance: dist, Status: "UNASSIGNED",

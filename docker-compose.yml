@@ -26,6 +26,8 @@ services:
     depends_on:
       - db
     command: ["bash", "-c", "/go/wait-for-it.sh -t 1 db:5432 -- go run app"]
+    environment:
+      - GOOGLE_MAP_API_KEY
     #    security_opt:
     #      - "seccomp:unconfined"
     #command: /go/bin/dlv debug ./src/app --headless --log --listen=:2345 --api-version=2

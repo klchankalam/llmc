@@ -3,6 +3,7 @@ package requesthandler
 import (
 	"fmt"
 	"net/http"
+	"request"
 	"responseutil"
 	"strconv"
 	"strings"
@@ -45,9 +46,9 @@ func getParamOrDefault(r *http.Request, param string, def int) string {
 	return p
 }
 
-func coordinatesValid(request PlaceOrderRequest) bool {
-	return !isLatitude(request.Origin[0]) || !isLongitude(request.Origin[1]) ||
-		!isLatitude(request.Destination[0]) || !isLongitude(request.Destination[1])
+func coordinatesValid(request request.PlaceOrderRequest) bool {
+	return isLatitude(request.Origin[0]) && isLongitude(request.Origin[1]) &&
+		isLatitude(request.Destination[0]) && isLongitude(request.Destination[1])
 }
 
 func isLatitude(s string) bool {

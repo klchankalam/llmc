@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"googlemaps.github.io/maps"
 	"os"
 	"requesthandler"
@@ -11,11 +12,29 @@ import (
 	"time"
 )
 
+type GMapClientMock struct {
+	mock.Mock
+}
+
+func (m *GMapClientMock) DistanceMatrix(ctx context.Context, r *maps.DistanceMatrixRequest) (*maps.DistanceMatrixResponse, error) {
+	args := m.Called(ctx, r)
+	return args.Get(0).(*maps.DistanceMatrixResponse), args.Error(1)
+}
+
+type GMapMock struct {
+	mock.Mock
+}
+
+func (m *GMapMock) GetClient(apiKey string) (GMapClientWrapper, error) {
+	args := m.Called(apiKey)
+	return args.Get(0).(GMapClientWrapper), args.Error(1)
+}
+
 var req = &requesthandler.PlaceOrderRequest{Origin: []string{"22.2802", "114.184919"}, Destination: []string{"25.052192", "121.522333"}}
 
 func TestDistanceWithNoKeyAndEmptyRequest(t *testing.T) {
 	os.Remove(apiKeyName)
-	d, err := GetDistanceMeters(&requesthandler.PlaceOrderRequest{}, &GMapInput{})
+	d, err := GetDistanceMeters(&requesthandler.PlaceOrderRequest{}, &GMap{&GMapMock{}})
 	if d != 0 || err != nil {
 		t.Errorf("Incorrect distance: got %d, expected 0; err: %v", d, err)
 	}
@@ -23,7 +42,7 @@ func TestDistanceWithNoKeyAndEmptyRequest(t *testing.T) {
 
 func TestDistanceWithNoKeyAndNonEmptyRequest(t *testing.T) {
 	os.Remove(apiKeyName)
-	d, err := GetDistanceMeters(req, &GMapInput{})
+	d, err := GetDistanceMeters(req, &GMap{&GMapMock{}})
 	if d != 0 || err != nil {
 		t.Errorf("Incorrect distance: got %d, expected 0; err: %v", d, err)
 	}
@@ -39,7 +58,7 @@ func TestEmptyAPIKey(t *testing.T) {
 	}()
 
 	// The following is the code under test
-	GetDistanceMeters(req, &GMapInput{})
+	GetDistanceMeters(req, &GMap{&GMapMock{}})
 }
 
 func TestHappyFlow(t *testing.T) {
@@ -68,21 +87,14 @@ func TestGMapReturnNotOK(t *testing.T) {
 	assert.Equal(t, -1, d)
 }
 
-func mockInterfaces(expected *maps.DistanceMatrixResponse, err error) *GMapInput {
-	GMapClientInputMock := &GMapClientInput{
-		DistanceMatrixFunc: func(ctx context.Context, r *maps.DistanceMatrixRequest) (response *maps.DistanceMatrixResponse, e error) {
-			return expected, err
-		},
-	}
-	GMapInputMock := &GMapInput{
-		WithAPIKeyFunc: func(apiKey string) maps.ClientOption {
-			return nil
-		},
-		NewClientFunc: func(options ...maps.ClientOption) (*GMapClientInput, error) {
-			return GMapClientInputMock, nil
-		},
-	}
-	return GMapInputMock
+func mockInterfaces(expected *maps.DistanceMatrixResponse, err error) *GMap {
+	gmapClient := GMapClientMock{}
+	gmapClient.On("DistanceMatrix", mock.Anything, mock.Anything).Return(expected, err)
+
+	gmap := GMapMock{}
+	gmap.On("GetClient", mock.Anything).Return(&GMapClient{&gmapClient}, nil)
+
+	return &GMap{&gmap}
 }
 
 func getNormalResponse() *maps.DistanceMatrixResponse {
