@@ -19,7 +19,7 @@ func main() {
 	DB.AutoMigrate(&entity.Order{})
 	log.Println("DB initialized")
 
-	dep := &rh.Dependencies{DB: DB, Map: &distancehelper.GMapReal{}, Dao: &dao.GormDB{}}
+	dep := &rh.Dependencies{DB: DB, Map: &distancehelper.GMapReal{}, Dao: &dao.GormDB{}, MapHelper: &distancehelper.GMapHelper{}}
 
 	// setup routes
 	router := httprouter.New()

@@ -33,10 +33,11 @@ func (m *GMapMock) GetClient(apiKey string) (GMapClient, error) {
 }
 
 var req = &request.PlaceOrderRequest{Origin: []string{"22.2802", "114.184919"}, Destination: []string{"25.052192", "121.522333"}}
+var gh = &GMapHelper{}
 
 func TestDistanceWithNoKeyAndEmptyRequest(t *testing.T) {
 	os.Remove(apiKeyName)
-	d, err := GetDistanceMeters(&request.PlaceOrderRequest{}, &GMapMock{})
+	d, err := gh.GetDistanceMeters(&request.PlaceOrderRequest{}, &GMapMock{})
 	if d != 0 || err != nil {
 		t.Errorf("Incorrect distance: got %d, expected 0; err: %v", d, err)
 	}
@@ -44,7 +45,7 @@ func TestDistanceWithNoKeyAndEmptyRequest(t *testing.T) {
 
 func TestDistanceWithNoKeyAndNonEmptyRequest(t *testing.T) {
 	os.Remove(apiKeyName)
-	d, err := GetDistanceMeters(req, &GMapMock{})
+	d, err := gh.GetDistanceMeters(req, &GMapMock{})
 	if d != 0 || err != nil {
 		t.Errorf("Incorrect distance: got %d, expected 0; err: %v", d, err)
 	}
@@ -60,13 +61,13 @@ func TestEmptyAPIKey(t *testing.T) {
 	}()
 
 	// The following is the code under test
-	GetDistanceMeters(req, &GMapMock{})
+	gh.GetDistanceMeters(req, &GMapMock{})
 }
 
 func TestHappyFlow(t *testing.T) {
 	os.Setenv(apiKeyName, "A")
 
-	d, _ := GetDistanceMeters(req, mockInterfaces(getNormalResponse(), nil))
+	d, _ := gh.GetDistanceMeters(req, mockInterfaces(getNormalResponse(), nil))
 
 	assert.Equal(t, 1049, d)
 }
@@ -74,7 +75,7 @@ func TestHappyFlow(t *testing.T) {
 func TestGMapAPIError(t *testing.T) {
 	os.Setenv(apiKeyName, "A")
 
-	d, err := GetDistanceMeters(req, mockInterfaces(getNormalResponse(), errors.New("")))
+	d, err := gh.GetDistanceMeters(req, mockInterfaces(getNormalResponse(), errors.New("")))
 
 	assert.NotNil(t, err)
 	assert.Equal(t, -1, d)
@@ -83,7 +84,7 @@ func TestGMapAPIError(t *testing.T) {
 func TestGMapReturnNotOK(t *testing.T) {
 	os.Setenv(apiKeyName, "A")
 
-	d, err := GetDistanceMeters(req, mockInterfaces(getErrorResponse(), nil))
+	d, err := gh.GetDistanceMeters(req, mockInterfaces(getErrorResponse(), nil))
 
 	assert.Nil(t, err)
 	assert.Equal(t, -1, d)

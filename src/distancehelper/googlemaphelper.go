@@ -33,13 +33,18 @@ func (m *GMapClientReal) DistanceMatrix(ctx context.Context, r *maps.DistanceMat
 	return m.DistanceMatrix(ctx, r)
 }
 
+type MapHelper interface {
+	GetDistanceMeters(co *request.PlaceOrderRequest, gm GMap) (int, error)
+}
+type GMapHelper struct{ MapHelper }
+
 func init() {
 	if _, present := os.LookupEnv(apiKeyName); !present {
 		log.Warn(fmt.Sprintf("Google API key is not set, distance will always be %d.", distNoKey))
 	}
 }
 
-func GetDistanceMeters(co *request.PlaceOrderRequest, gm GMap) (int, error) {
+func (gh *GMapHelper) GetDistanceMeters(co *request.PlaceOrderRequest, gm GMap) (int, error) {
 	key, present := os.LookupEnv(apiKeyName)
 	if !present {
 		return 0, nil

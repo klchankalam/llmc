@@ -25,9 +25,10 @@ type TakeOrder struct {
 }
 
 type Dependencies struct {
-	DB  *gorm.DB
-	Dao db.DAO
-	Map distancehelper.GMap
+	DB        *gorm.DB
+	Dao       db.DAO
+	Map       distancehelper.GMap
+	MapHelper distancehelper.MapHelper
 }
 
 func (dep *Dependencies) HandleListOrder(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -80,7 +81,7 @@ func (dep *Dependencies) HandleTakeOrder(w http.ResponseWriter, r *http.Request,
 	updateResult := dep.Dao.UpdateOrderStatus(dep.DB, &order, StatusTaken, StatusUnassigned)
 	if updateResult.RowsAffected < 1 {
 		if updateResult.Error != nil {
-			responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Update error: %v", updateResult.Error), http.StatusBadRequest)
+			responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Update error: %v", updateResult.Error), http.StatusInternalServerError)
 		} else {
 			responseutil.WriteJSONErrorResponse(w, "Not updated - perhaps updated moment ago?", http.StatusBadRequest)
 		}
@@ -109,7 +110,7 @@ func (dep *Dependencies) HandleNewOrder(w http.ResponseWriter, r *http.Request, 
 	}
 
 	// Get distance
-	dist, err := distancehelper.GetDistanceMeters(&orderRequest, dep.Map)
+	dist, err := dep.MapHelper.GetDistanceMeters(&orderRequest, dep.Map)
 	if err != nil {
 		responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Canno find distance: %v", err), http.StatusInternalServerError)
 		return
@@ -125,7 +126,7 @@ func (dep *Dependencies) HandleNewOrder(w http.ResponseWriter, r *http.Request, 
 		DestLat: orderRequest.Destination[0], DestLong: orderRequest.Destination[1]}
 	createResult := dep.Dao.CreateOrder(dep.DB, res)
 	if createResult.Error != nil || res.ID == 0 {
-		responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Create error: %v", createResult.Error), http.StatusBadRequest)
+		responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Create error: %v", createResult.Error), http.StatusInternalServerError)
 		return
 	}
 
