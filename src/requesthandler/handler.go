@@ -123,7 +123,7 @@ func (dep *Dependencies) HandleNewOrder(w http.ResponseWriter, r *http.Request, 
 	res := &entity.Order{Distance: dist, Status: "UNASSIGNED",
 		OriginsLat: orderRequest.Origin[0], OriginsLong: orderRequest.Origin[1],
 		DestLat: orderRequest.Destination[0], DestLong: orderRequest.Destination[1]}
-	createResult := dep.Dao.CreateOrder(dep.DB, &res)
+	createResult := dep.Dao.CreateOrder(dep.DB, res)
 	if createResult.Error != nil || res.ID == 0 {
 		responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Create error: %v", createResult.Error), http.StatusBadRequest)
 		return

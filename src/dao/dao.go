@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"entity"
 	"fmt"
 	"github.com/jinzhu/gorm"
 	//_ "github.com/jinzhu/gorm/dialects/mysql"
@@ -23,28 +24,28 @@ func GetDB() *gorm.DB {
 }
 
 type DAO interface {
-	FindWithLimitAndOffset(db *gorm.DB, limit int, offset int, out interface{})
-	FindFirstWithIdAndStatus(db *gorm.DB, status string, id int, out interface{})
-	UpdateOrderStatus(db *gorm.DB, modelToUpdate interface{}, newStatus string, oldStatus string) *gorm.DB
-	CreateOrder(db *gorm.DB, modelToCreate interface{}) *gorm.DB
+	FindWithLimitAndOffset(db *gorm.DB, limit int, offset int, out *[]entity.Order)
+	FindFirstWithIdAndStatus(db *gorm.DB, status string, id int, out *entity.Order)
+	UpdateOrderStatus(db *gorm.DB, modelToUpdate *entity.Order, newStatus string, oldStatus string) *gorm.DB
+	CreateOrder(db *gorm.DB, modelToCreate *entity.Order) *gorm.DB
 }
 
 type GormDB struct {
 	DAO
 }
 
-func (gdb *GormDB) FindWithLimitAndOffset(db *gorm.DB, limit int, offset int, out interface{}) {
+func (gdb *GormDB) FindWithLimitAndOffset(db *gorm.DB, limit int, offset int, out *[]entity.Order) {
 	db.Limit(limit).Offset(offset).Find(out)
 }
 
-func (gdb *GormDB) FindFirstWithIdAndStatus(db *gorm.DB, status string, id int, out interface{}) {
+func (gdb *GormDB) FindFirstWithIdAndStatus(db *gorm.DB, status string, id int, out *entity.Order) {
 	db.Where("status = ?", status).First(out, id)
 }
 
-func (gdb *GormDB) UpdateOrderStatus(db *gorm.DB, modelToUpdate interface{}, newStatus string, oldStatus string) *gorm.DB {
+func (gdb *GormDB) UpdateOrderStatus(db *gorm.DB, modelToUpdate *entity.Order, newStatus string, oldStatus string) *gorm.DB {
 	return db.Model(modelToUpdate).Where("Status = ?", oldStatus).Update("Status", newStatus)
 }
 
-func (gdb *GormDB) CreateOrder(db *gorm.DB, modelToCreate interface{}) *gorm.DB {
+func (gdb *GormDB) CreateOrder(db *gorm.DB, modelToCreate *entity.Order) *gorm.DB {
 	return db.Create(modelToCreate)
 }
