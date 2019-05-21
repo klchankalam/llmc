@@ -96,8 +96,8 @@ func HandleNewOrder(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 		return
 	}
 	// check coordinates
-	if !coordinatesValid(orderRequest) {
-		responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Incorrect input - must be valid latitudes and longitudes: %v", orderRequest), http.StatusBadRequest)
+	if !coordinatesValid(&orderRequest) {
+		responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Incorrect input - must be valid latitudes and longitudes: %v", &orderRequest), http.StatusBadRequest)
 		return
 	}
 

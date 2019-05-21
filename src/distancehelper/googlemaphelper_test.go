@@ -12,18 +12,14 @@ import (
 	"time"
 )
 
-type GMapClientMock struct {
-	mock.Mock
-}
+type GMapClientMock struct{ mock.Mock }
 
 func (m *GMapClientMock) DistanceMatrix(ctx context.Context, r *maps.DistanceMatrixRequest) (*maps.DistanceMatrixResponse, error) {
 	args := m.Called(ctx, r)
 	return args.Get(0).(*maps.DistanceMatrixResponse), args.Error(1)
 }
 
-type GMapMock struct {
-	mock.Mock
-}
+type GMapMock struct{ mock.Mock }
 
 func (m *GMapMock) GetClient(apiKey string) (GMapClientWrapper, error) {
 	args := m.Called(apiKey)

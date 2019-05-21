@@ -46,7 +46,7 @@ func getParamOrDefault(r *http.Request, param string, def int) string {
 	return p
 }
 
-func coordinatesValid(request request.PlaceOrderRequest) bool {
+func coordinatesValid(request *request.PlaceOrderRequest) bool {
 	return isLatitude(request.Origin[0]) && isLongitude(request.Origin[1]) &&
 		isLatitude(request.Destination[0]) && isLongitude(request.Destination[1])
 }
@@ -64,7 +64,7 @@ func isNumWithRange(s string, min float64, max float64) bool {
 	if err != nil {
 		return false
 	}
-	return n > min && n < max
+	return n >= min && n <= max
 }
 
 func checkContentType(r *http.Request, w http.ResponseWriter, ct string) bool {
