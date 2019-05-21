@@ -15,21 +15,19 @@ const (
 	apiKeyName = "GOOGLE_MAP_API_KEY"
 )
 
-type GMapWrapper interface {
-	GetClient(apiKey string) (GMapClientWrapper, error)
+type GMap interface {
+	GetClient(apiKey string) (GMapClient, error)
 }
-type GMap struct{ GMapWrapper }
-type GMapReal struct{}
+type GMapReal struct{ GMap }
 
-func (m *GMapReal) GetClient(apiKey string) (GMapClientWrapper, error) {
+func (m *GMapReal) GetClient(apiKey string) (GMapClient, error) {
 	return maps.NewClient(maps.WithAPIKey(apiKey))
 }
 
-type GMapClientWrapper interface {
+type GMapClient interface {
 	DistanceMatrix(ctx context.Context, r *maps.DistanceMatrixRequest) (*maps.DistanceMatrixResponse, error)
 }
-type GMapClient struct{ GMapClientWrapper }
-type GMapClientReal struct{}
+type GMapClientReal struct{ GMapClient }
 
 func (m *GMapClientReal) DistanceMatrix(ctx context.Context, r *maps.DistanceMatrixRequest) (*maps.DistanceMatrixResponse, error) {
 	return m.DistanceMatrix(ctx, r)
@@ -41,7 +39,7 @@ func init() {
 	}
 }
 
-func GetDistanceMeters(co *request.PlaceOrderRequest, gm *GMap) (int, error) {
+func GetDistanceMeters(co *request.PlaceOrderRequest, gm GMap) (int, error) {
 	key, present := os.LookupEnv(apiKeyName)
 	if !present {
 		return 0, nil

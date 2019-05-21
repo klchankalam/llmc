@@ -1,11 +1,11 @@
 package requesthandler
 
 import (
-	"db"
 	"distancehelper"
 	"encoding/json"
-	. "entity"
+	"entity"
 	"fmt"
+	"github.com/jinzhu/gorm"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"request"
@@ -23,7 +23,12 @@ type TakeOrder struct {
 	Status string `json:"Status"`
 }
 
-func HandleListOrder(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+type Dependencies struct {
+	DB  *gorm.DB
+	Map distancehelper.GMap
+}
+
+func (dep *Dependencies) HandleListOrder(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// get query params
 	page, limit, err := getPageAndLimit(r)
 	if len(err) > 0 {
@@ -32,14 +37,14 @@ func HandleListOrder(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 	}
 
 	// query
-	var orders []Order
-	db.GetDB().Limit(limit).Offset((page - 1) * limit).Find(&orders)
+	var orders []entity.Order
+	dep.DB.Limit(limit).Offset((page - 1) * limit).Find(&orders)
 
 	// return result to user
 	responseutil.WriteJSONToResponse(&orders, w)
 }
 
-func HandleTakeOrder(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (dep *Dependencies) HandleTakeOrder(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// check input
 	ids := ps.ByName("id")
 	id, err := strconv.Atoi(ids)
@@ -49,8 +54,8 @@ func HandleTakeOrder(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 	}
 
 	// get entity
-	var order Order
-	db.GetDB().Where("status = ?", StatusUnassigned).First(&order, id)
+	var order entity.Order
+	dep.DB.Where("status = ?", StatusUnassigned).First(&order, id)
 	if order.ID == 0 {
 		responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Order id %d with status %s not found", id, StatusUnassigned), http.StatusNotFound)
 		return
@@ -70,7 +75,7 @@ func HandleTakeOrder(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 	}
 
 	// to avoid multiple updates, we add the where check
-	updateResult := db.GetDB().Model(&order).Where("Status = ?", StatusUnassigned).Update("Status", StatusTaken)
+	updateResult := dep.DB.Model(&order).Where("Status = ?", StatusUnassigned).Update("Status", StatusTaken)
 	if updateResult.RowsAffected < 1 {
 		if updateResult.Error != nil {
 			responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Update error: %v", updateResult.Error), http.StatusBadRequest)
@@ -83,7 +88,7 @@ func HandleTakeOrder(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 	}
 }
 
-func HandleNewOrder(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (dep *Dependencies) HandleNewOrder(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	if !checkContentType(r, w, "application/json") {
 		return
 	}
@@ -102,7 +107,7 @@ func HandleNewOrder(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 	}
 
 	// Get distance
-	dist, err := distancehelper.GetDistanceMeters(&orderRequest, &distancehelper.GMap{&distancehelper.GMapReal{}})
+	dist, err := distancehelper.GetDistanceMeters(&orderRequest, dep.Map)
 	if err != nil {
 		responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Canno find distance: %v", err), http.StatusInternalServerError)
 		return
@@ -113,10 +118,10 @@ func HandleNewOrder(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 	}
 
 	// save orderRequest in db
-	res := &Order{Distance: dist, Status: "UNASSIGNED",
+	res := &entity.Order{Distance: dist, Status: "UNASSIGNED",
 		OriginsLat: orderRequest.Origin[0], OriginsLong: orderRequest.Origin[1],
 		DestLat: orderRequest.Destination[0], DestLong: orderRequest.Destination[1]}
-	createResult := db.GetDB().Create(res)
+	createResult := dep.DB.Create(res)
 	if createResult.Error != nil || res.ID == 0 {
 		responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Create error: %v", createResult.Error), http.StatusBadRequest)
 		return

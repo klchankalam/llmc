@@ -2,6 +2,7 @@ package main
 
 import (
 	"db"
+	"distancehelper"
 	"entity"
 	"github.com/julienschmidt/httprouter"
 	log "github.com/sirupsen/logrus"
@@ -10,12 +11,6 @@ import (
 )
 
 func main() {
-	// setup routes
-	router := httprouter.New()
-	router.POST("/orders", rh.HandleNewOrder)
-	router.PATCH("/orders/:id", rh.HandleTakeOrder)
-	router.GET("/orders", rh.HandleListOrder)
-
 	// setup db
 	log.Println("initializing DB...")
 	db.InitDb()
@@ -23,6 +18,14 @@ func main() {
 	defer DB.Close()
 	DB.AutoMigrate(&entity.Order{})
 	log.Println("DB initialized")
+
+	dep := &rh.Dependencies{DB: DB, Map: &distancehelper.GMapReal{}}
+
+	// setup routes
+	router := httprouter.New()
+	router.POST("/orders", dep.HandleNewOrder)
+	router.PATCH("/orders/:id", dep.HandleTakeOrder)
+	router.GET("/orders", dep.HandleListOrder)
 
 	// start server
 	log.Println("Starting server")
