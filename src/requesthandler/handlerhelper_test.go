@@ -80,7 +80,7 @@ func TestGetPageAndLimit(t *testing.T) {
 		h.URL = &url.URL{RawQuery: k}
 		p, l, e := getPageAndLimit(&h)
 		if p != v.Page || l != v.Limit || len(e) != v.NumErr {
-			t.Errorf("Get page/limit expects %#v, actual: %d %d %d", v, p, l, len(e))
+			t.Errorf("Get page/limit with %s expects %#v, actual: {page:%d limit:%d numErr:%d}", k, v, p, l, len(e))
 		}
 	}
 
