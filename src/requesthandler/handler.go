@@ -18,6 +18,7 @@ import (
 const (
 	StatusUnassigned = "UNASSIGNED"
 	StatusTaken      = "TAKEN"
+	StatusSuccess    = "SUCCESS"
 )
 
 type TakeOrder struct {
@@ -87,7 +88,7 @@ func (dep *Dependencies) HandleTakeOrder(w http.ResponseWriter, r *http.Request,
 		}
 		return
 	} else {
-		responseutil.WriteJSONToResponse(&TakeOrder{"SUCCESS"}, w)
+		responseutil.WriteJSONToResponse(&TakeOrder{StatusSuccess}, w)
 	}
 }
 

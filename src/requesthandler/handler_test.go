@@ -236,7 +236,11 @@ func TestTakeOrderUpdateFailed(t *testing.T) {
 }
 
 func TestTakeOrderOK(t *testing.T) {
-	testTakeOrder(t, strconv.Itoa(id), getMockDaoForTakeOrder(order, &gorm.DB{RowsAffected: 1}), http.StatusOK, strings.NewReader("{\"status\":\"TAKEN\"}"))
+	w := testTakeOrder(t, strconv.Itoa(id), getMockDaoForTakeOrder(order, &gorm.DB{RowsAffected: 1}), http.StatusOK, strings.NewReader("{\"status\":\"TAKEN\"}"))
+
+	if !strings.Contains(w.Body.String(), StatusSuccess) {
+		t.Errorf("Expected success result, got %s", w.Body.String())
+	}
 }
 
 func testTakeOrder(t *testing.T, id string, dao dao.DAO, status int, body *strings.Reader) (w *httptest.ResponseRecorder) {
