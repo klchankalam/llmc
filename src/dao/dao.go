@@ -43,7 +43,7 @@ func (gdb *GormDB) FindFirstWithIdAndStatus(db *gorm.DB, status string, id int, 
 }
 
 func (gdb *GormDB) UpdateOrderStatus(db *gorm.DB, modelToUpdate *entity.Order, newStatus string, oldStatus string) *gorm.DB {
-	return db.Model(modelToUpdate).Where("Status = ?", oldStatus).Update("Status", newStatus)
+	return db.Model(modelToUpdate).Where("status = ?", oldStatus).Update("status", newStatus)
 }
 
 func (gdb *GormDB) CreateOrder(db *gorm.DB, modelToCreate *entity.Order) *gorm.DB {
