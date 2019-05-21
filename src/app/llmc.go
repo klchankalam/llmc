@@ -1,7 +1,7 @@
 package main
 
 import (
-	"db"
+	"dao"
 	"distancehelper"
 	"entity"
 	"github.com/julienschmidt/httprouter"
@@ -13,13 +13,13 @@ import (
 func main() {
 	// setup db
 	log.Println("initializing DB...")
-	db.InitDb()
-	DB := db.GetDB()
+	dao.InitDB()
+	DB := dao.GetDB()
 	defer DB.Close()
 	DB.AutoMigrate(&entity.Order{})
 	log.Println("DB initialized")
 
-	dep := &rh.Dependencies{DB: DB, Map: &distancehelper.GMapReal{}}
+	dep := &rh.Dependencies{DB: DB, Map: &distancehelper.GMapReal{}, Dao: &dao.GormDB{}}
 
 	// setup routes
 	router := httprouter.New()

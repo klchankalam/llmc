@@ -1,6 +1,7 @@
 package requesthandler
 
 import (
+	db "dao"
 	"distancehelper"
 	"encoding/json"
 	"entity"
@@ -25,6 +26,7 @@ type TakeOrder struct {
 
 type Dependencies struct {
 	DB  *gorm.DB
+	Dao db.DAO
 	Map distancehelper.GMap
 }
 
@@ -38,7 +40,7 @@ func (dep *Dependencies) HandleListOrder(w http.ResponseWriter, r *http.Request,
 
 	// query
 	var orders []entity.Order
-	dep.DB.Limit(limit).Offset((page - 1) * limit).Find(&orders)
+	dep.Dao.FindWithLimitAndOffset(dep.DB, limit, (page-1)*limit, &orders)
 
 	// return result to user
 	responseutil.WriteJSONToResponse(&orders, w)
@@ -55,7 +57,7 @@ func (dep *Dependencies) HandleTakeOrder(w http.ResponseWriter, r *http.Request,
 
 	// get entity
 	var order entity.Order
-	dep.DB.Where("status = ?", StatusUnassigned).First(&order, id)
+	dep.Dao.FindFirstWithIdAndStatus(dep.DB, StatusUnassigned, id, &order)
 	if order.ID == 0 {
 		responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Order id %d with status %s not found", id, StatusUnassigned), http.StatusNotFound)
 		return
@@ -75,7 +77,7 @@ func (dep *Dependencies) HandleTakeOrder(w http.ResponseWriter, r *http.Request,
 	}
 
 	// to avoid multiple updates, we add the where check
-	updateResult := dep.DB.Model(&order).Where("Status = ?", StatusUnassigned).Update("Status", StatusTaken)
+	updateResult := dep.Dao.UpdateOrderStatus(dep.DB, &order, StatusTaken, StatusUnassigned)
 	if updateResult.RowsAffected < 1 {
 		if updateResult.Error != nil {
 			responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Update error: %v", updateResult.Error), http.StatusBadRequest)
@@ -121,7 +123,7 @@ func (dep *Dependencies) HandleNewOrder(w http.ResponseWriter, r *http.Request, 
 	res := &entity.Order{Distance: dist, Status: "UNASSIGNED",
 		OriginsLat: orderRequest.Origin[0], OriginsLong: orderRequest.Origin[1],
 		DestLat: orderRequest.Destination[0], DestLong: orderRequest.Destination[1]}
-	createResult := dep.DB.Create(res)
+	createResult := dep.Dao.CreateOrder(dep.DB, &res)
 	if createResult.Error != nil || res.ID == 0 {
 		responseutil.WriteJSONErrorResponse(w, fmt.Sprintf("Create error: %v", createResult.Error), http.StatusBadRequest)
 		return

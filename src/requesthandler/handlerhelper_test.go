@@ -74,6 +74,7 @@ func TestGetPageAndLimit(t *testing.T) {
 		"page=2&limit=-2":  createPageLimitResult(2, -1, 1),
 		"page=-2&limit=-2": createPageLimitResult(1, -1, 2),
 		"page=a&limit=-2":  createPageLimitResult(1, -1, 2),
+		"page=&limit=":     createPageLimitResult(1, -1, 0),
 	}
 
 	for k, v := range r {
